@@ -18,26 +18,39 @@ export default function NewEntryPage() {
 
   async function analyze() {
     setErr("");
-    if (!text || text.trim().length < 5) {
-      setErr("Please enter at least 5 characters.");
+
+    // 後端 /api/analyze 要求至少 10 個字，這裡跟它一致
+    if (!text || text.trim().length < 10) {
+      setErr("Please enter at least 10 characters.");
       return;
     }
     if (!auth.currentUser) {
       setErr("Please sign in first.");
       return;
     }
+
     try {
       setLoading(true);
-      const res = await fetch("/api/analyze", {
+
+      // ✅ 用 fetchWithAuth，自動帶 Authorization 與 Content-Type
+      const res = await fetchWithAuth("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
+
+      // 對 401/其他錯誤友善提示
+      if (res.status === 401) {
+        setErr("Please sign in first.");
+        setResult(null);
+        return;
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analyze failed.");
-      setResult(data);
+      if (!res.ok) throw new Error(data?.error || "Analyze failed.");
+      setResult(data as AnalyzeResult);
     } catch (e: any) {
       setErr(e?.message ?? "Analyze failed.");
+      setResult(null);
     } finally {
       setLoading(false);
     }
@@ -46,6 +59,7 @@ export default function NewEntryPage() {
   async function save() {
     setErr("");
     if (!result) return;
+
     try {
       setSaving(true);
       const res = await fetchWithAuth("/api/journals", {
@@ -56,8 +70,14 @@ export default function NewEntryPage() {
           advice: result.advice,
         }),
       });
+
+      if (res.status === 401) {
+        setErr("Please sign in first.");
+        return;
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Save failed.");
+      if (!res.ok) throw new Error(data?.error || "Save failed.");
       router.push("/journals");
     } catch (e: any) {
       setErr(e?.message ?? "Save failed.");
@@ -67,7 +87,6 @@ export default function NewEntryPage() {
   }
 
   return (
-    
     <main className="min-h-[calc(100vh-120px)] flex items-center justify-center p-6">
       <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 text-white">
         <h1 className="text-2xl font-semibold">How are you feeling today?</h1>
