@@ -1,3 +1,4 @@
+//src//app/register/page.tsx
 "use client";
 
 
@@ -10,6 +11,7 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { authErrorMessage } from "@/lib/authErrors";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,7 +30,7 @@ export default function RegisterPage() {
       if (name.trim()) await updateProfile(cred.user, { displayName: name.trim() });
       router.push("/new");
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to create account.");
+      setErr(authErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -41,7 +43,7 @@ export default function RegisterPage() {
       await signInWithPopup(auth, googleProvider);
       router.push("/new");
     } catch (e: any) {
-      setErr(e?.message ?? "Google sign-in failed.");
+      setErr(authErrorMessage(e));
     } finally {
       setLoading(false);
     }

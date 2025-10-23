@@ -13,6 +13,7 @@ export const moodColor: Record<MoodLabel, string> = {
   grateful: "bg-yellow-400",
   excited:  "bg-fuchsia-500",
   tired:    "bg-violet-400",
+  unknown:"bg-black",
 };
 
 /** Helper: get a ready-to-use class string for a mood dot */

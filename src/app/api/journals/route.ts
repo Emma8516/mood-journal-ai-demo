@@ -25,61 +25,67 @@ function monthRange(month: string) {
   return { start: fmt(start), end: fmt(end) };
 }
 
-// ✅ GET: 取月份清單 或 特定月份日記
+// ✅ GET: 取月份清單 或 特定月份日記（支援 take，months 用 dateKey 排序）
 export async function GET(req: NextRequest) {
-  try {
-    const uid = await requireUid(req);
-    const url = new URL(req.url);
-    const mode = url.searchParams.get("mode");
-    const month = url.searchParams.get("month");
-
-    const col = adminDb.collection("users").doc(uid).collection("journals");
-
-    // 1️⃣ 取月份清單
-    if (mode === "months") {
-      const snap = await col.orderBy("createdAt", "desc").limit(1000).get();
-      const months = new Set<string>();
-      snap.forEach((d) => {
-        const dk = d.get("dateKey");
-        if (typeof dk === "string" && dk.length >= 7) months.add(dk.slice(0, 7));
-      });
-      const list = Array.from(months).sort((a, b) => (a < b ? 1 : -1));
-      return NextResponse.json(list);
-    }
-
-    // 2️⃣ 取指定月份的日記
-    if (month) {
-      const range = monthRange(month);
-      if (!range) return NextResponse.json({ error: "Invalid month" }, { status: 400 });
-
-      const snap = await col
-        .where("dateKey", ">=", range.start)
-        .where("dateKey", "<", range.end)
-        .orderBy("dateKey", "desc") 
-        .limit(500)
-        .get();
-
+    try {
+      const uid = await requireUid(req);
+      const url = new URL(req.url);
+      const mode = url.searchParams.get("mode");
+      const month = url.searchParams.get("month");
+  
+      // 讀取 take，給上限避免被亂轟
+      const takeRaw = url.searchParams.get("take");
+      const take = Math.min(Math.max(Number(takeRaw ?? 20), 1), 100); // 1~100，預設 20
+  
+      const col = adminDb.collection("users").doc(uid).collection("journals");
+  
+      // 1) 取月份清單（以 dateKey 排序，再萃取 YYYY-MM）
+      if (mode === "months") {
+        // 這裡用 dateKey 排序，比用 createdAt 穩定
+        const snap = await col.orderBy("dateKey", "desc").limit(2000).get();
+        const months = new Set<string>();
+        snap.forEach((d) => {
+          const dk = d.get("dateKey");
+          if (typeof dk === "string" && dk.length >= 7) months.add(dk.slice(0, 7));
+        });
+        const list = Array.from(months).sort((a, b) => (a < b ? 1 : -1));
+        return NextResponse.json(list);
+      }
+  
+      // 2) 取指定月份的日記
+      if (month) {
+        const range = monthRange(month);
+        if (!range) return NextResponse.json({ error: "Invalid month" }, { status: 400 });
+  
+        const snap = await col
+          .where("dateKey", ">=", range.start)
+          .where("dateKey", "<", range.end)
+          .orderBy("dateKey", "desc")
+          .limit(Math.min(take, 500)) // 每月最多 500 筆，受 take 影響
+          .get();
+  
+        const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        return NextResponse.json(rows);
+      }
+  
+      // 3) 沒帶 month → 回最近 N 筆（受 take 控制）
+      const snap = await col.orderBy("createdAt", "desc").limit(take).get();
       const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       return NextResponse.json(rows);
+    } catch (e: any) {
+      if (e instanceof Response) return e;
+      console.error("[GET /journals] error:", e);
+      return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
-
-    // 3️⃣ 沒帶 month → 回最近 20 筆
-    const snap = await col.orderBy("createdAt", "desc").limit(20).get();
-    const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-    return NextResponse.json(rows);
-  } catch (e: any) {
-    if (e instanceof Response) return e;
-    console.error("[GET /journals] error:", e);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
-}
+  
 
-// ✅ POST: 新增日記
+// POST: 新增日記
 export async function POST(req: NextRequest) {
   try {
     const uid = await requireUid(req);
     const body = await req.json().catch(() => ({}));
-    if (!body?.text || String(body.text).trim().length < 5) {
+    if (!body?.text || String(body.text).trim().length < 10) {
       return NextResponse.json({ error: "text too short" }, { status: 400 });
     }
 
@@ -105,7 +111,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ✅ DELETE: 刪除
+// DELETE: 刪除
 export async function DELETE(req: NextRequest) {
   try {
     const uid = await requireUid(req);

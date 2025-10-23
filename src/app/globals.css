@@ -24,19 +24,54 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* === MoodJar 動畫（全域） === */
+/* === 更自然的雙彈跳 === */
 @keyframes mj-fall {
-    0%   { transform: translateY(-14px); }
-    100% { transform: translateY(160px); }
+    /* 起始：微高處 */
+    0% {
+      transform: translate3d(0, -14px, 0) scale(1);
+      /* 接下來這一段(0%→70%) 用較快的下墜曲線 */
+      animation-timing-function: cubic-bezier(.2,.7,.4,1); /* ease-in-ish */
+    }
+  
+    /* 第一次著地（最大位移） */
+    70% {
+      transform: translate3d(0, 160px, 0) scaleX(1.10) scaleY(0.90); /* 擠壓 */
+      transform-origin: center bottom;
+      /* 70%→85%：彈起，用 ease-out */
+      animation-timing-function: cubic-bezier(.2,.8,.2,1);
+    }
+  
+    /* 第一次彈起頂點 */
+    85% {
+      transform: translate3d(0, 118px, 0) scaleX(0.97) scaleY(1.03); /* 拉長一點 */
+      /* 85%→93%：回落，稍快 */
+      animation-timing-function: cubic-bezier(.3,.6,.5,1); /* 介於 linear 與 ease-in */
+    }
+  
+    /* 回到地面（小擠壓） */
+    93% {
+      transform: translate3d(0, 160px, 0) scaleX(1.06) scaleY(0.94);
+      /* 93%→100%：最後小回彈，輕巧 */
+      animation-timing-function: cubic-bezier(.2,.8,.2,1);
+    }
+  
+    /* 穩定 */
+    100% {
+      transform: translate3d(0, 160px, 0) scale(1);
+    }
   }
   
-  /* 工具類，和你原本 class 對齊 */
+  /* 配套樣式 */
   .mj-dot {
-    height: 10px;
-    width: 10px;
+    height: 15px;
+    width: 15px;
     border-radius: 9999px;
     opacity: 0.9;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
-    animation: mj-fall 600ms ease-out forwards;
+  
+    /* 稍微拉長總時長，讓彈跳有餘韻 */
+    animation: mj-fall 1000ms forwards;
+    will-change: transform;
+    transform-origin: center bottom;
   }
+  
   

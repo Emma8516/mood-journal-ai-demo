@@ -4,10 +4,13 @@
 export type MoodLabel =
   | "positive" | "neutral" | "negative"
   | "stressed" | "anxious" | "sad" | "angry"
-  | "grateful" | "excited" | "tired";
+  | "grateful" | "excited" | "tired"| "unknown";
 
 // 1..5 discrete score
 export type MoodScore = 1 | 2 | 3 | 4 | 5;
+
+
+  
 
 export interface Mood {
   label: MoodLabel;

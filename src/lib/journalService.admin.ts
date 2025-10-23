@@ -48,7 +48,7 @@ export async function listJournals(uid: string, opts: ListOpts = {}) {
  * 做法：抓最近 N 筆（預設 1000），由 dateKey 取唯一月份。
  * 夠簡潔，不做複雜聚合；資料量大再調整。
  */
-export async function listAvailableMonths(uid: string, cap = 1000) {
+export async function listAvailableMonths(uid: string, cap = 30) {
   const q = adminDb
     .collection("users").doc(uid)
     .collection("journals")

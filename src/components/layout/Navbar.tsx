@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
 const links = [
   { href: "/", label: "Home" },
@@ -19,6 +20,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const isHome = pathname === "/"; // ✅ 判斷是否為首頁
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUid(u?.uid ?? null));
     return () => unsub();
@@ -29,9 +32,11 @@ export default function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
+  // ✅ 首頁不顯示 Home
   const visibleLinks = links
     .filter((l) => !l.authOnly || uid)
-    .filter((l) => !(uid && l.href === "/")); // 👈 logged-in: hide Home
+    .filter((l) => !(isHome && l.href === "/"))
+    .filter((l) => !(uid && l.href === "/"));
 
   async function handleSignOut() {
     if (signingOut) return;
@@ -54,7 +59,7 @@ export default function Navbar() {
           Mood Journal <span className="text-indigo-400">AI</span>
         </Link>
 
-        {/* desktop */}
+        {/* 桌機版 */}
         <div className="hidden sm:flex items-center gap-2">
           <div className="flex items-center gap-1">
             {visibleLinks.map(({ href, label }) => {
@@ -75,36 +80,33 @@ export default function Navbar() {
             })}
           </div>
 
+          {/* ✅ 首頁時不顯示登入/註冊 */}
           {!uid ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="px-3 py-1.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm transition"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 text-sm rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 hover:opacity-90 transition"
-              >
-                Create account
-              </Link>
-            </div>
+            !isHome ? (
+              <div className="flex items-center gap-2">
+                <ButtonLink href="/login" variant="secondary" size="sm">
+                  Sign in
+                </ButtonLink>
+                <ButtonLink href="/register" variant="primary" size="sm">
+                  Create account
+                </ButtonLink>
+              </div>
+            ) : null
           ) : (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="px-4 py-2 text-sm rounded-full bg-white/10 hover:bg-white/15 disabled:opacity-60 transition"
               >
                 {signingOut ? "Signing out…" : "Sign out"}
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
-        {/* mobile hamburger */}
+        {/* 手機漢堡選單 */}
         <button
           type="button"
           className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 hover:bg-white/15 transition"
@@ -119,7 +121,7 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* mobile dropdown */}
+      {/* 手機下拉選單 */}
       <div
         id="mobile-menu"
         className={[
@@ -145,30 +147,38 @@ export default function Navbar() {
               );
             })}
 
+            {/* ✅ 首頁時不顯示登入/註冊 */}
             {!uid ? (
-              <>
-                <Link
-                  href="/login"
-                  className="block rounded-md px-3 py-2 text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition mt-1"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/register"
-                  className="block rounded-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-600 to-violet-600 hover:opacity-90 transition mt-1"
-                >
-                  Create account
-                </Link>
-              </>
+              !isHome ? (
+                <>
+                  <ButtonLink
+                    href="/login"
+                    variant="secondary"
+                    size="md"
+                    className="w-full justify-center mt-1"
+                  >
+                    Sign in
+                  </ButtonLink>
+                  <ButtonLink
+                    href="/register"
+                    variant="primary"
+                    size="md"
+                    className="w-full justify-center mt-1"
+                  >
+                    Create account
+                  </ButtonLink>
+                </>
+              ) : null
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="mt-1 block w-full rounded-md px-3 py-2 text-left text-sm bg-white/10 hover:bg-white/15 disabled:opacity-60 transition"
+                className="mt-1 w-full justify-center"
               >
                 {signingOut ? "Signing out…" : "Sign out"}
-              </button>
+              </Button>
             )}
           </div>
         </div>

@@ -1,12 +1,17 @@
+// src/app/new/page.tsx
 "use client";
+
 import { useState } from "react";
 import { auth } from "@/lib/firebase";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { useRouter } from "next/navigation";
-import type { MoodLabel } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import type { MoodLabel } from "@/lib/types";
 
-type AnalyzeResult = { mood: { label: MoodLabel; score: number }; advice: string };
+import {
+  analyzeText,
+  createJournal,
+  type AnalyzeResult,
+} from "@/features/journals/client";
 
 export default function NewEntryPage() {
   const [text, setText] = useState("");
@@ -16,14 +21,15 @@ export default function NewEntryPage() {
   const [err, setErr] = useState<string>("");
   const router = useRouter();
 
+  // --- 分析功能 ---
   async function analyze() {
     setErr("");
 
-    // 後端 /api/analyze 要求至少 10 個字，這裡跟它一致
     if (!text || text.trim().length < 10) {
       setErr("Please enter at least 10 characters.");
       return;
     }
+
     if (!auth.currentUser) {
       setErr("Please sign in first.");
       return;
@@ -31,56 +37,43 @@ export default function NewEntryPage() {
 
     try {
       setLoading(true);
-
-      // ✅ 用 fetchWithAuth，自動帶 Authorization 與 Content-Type
-      const res = await fetchWithAuth("/api/analyze", {
-        method: "POST",
-        body: JSON.stringify({ text }),
-      });
-
-      // 對 401/其他錯誤友善提示
-      if (res.status === 401) {
-        setErr("Please sign in first.");
-        setResult(null);
-        return;
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Analyze failed.");
-      setResult(data as AnalyzeResult);
+      const data = await analyzeText(text);
+      setResult(data);
     } catch (e: any) {
-      setErr(e?.message ?? "Analyze failed.");
+      const msg = e?.message || "Analyze failed.";
+      setErr(msg.includes("401") ? "Please sign in first." : msg);
       setResult(null);
     } finally {
       setLoading(false);
     }
   }
 
+  // --- 儲存功能 ---
   async function save() {
     setErr("");
-    if (!result) return;
+
+    if (!text.trim()) {
+      setErr("Please write something before saving.");
+      return;
+    }
+
+    if (!auth.currentUser) {
+      setErr("Please sign in first.");
+      return;
+    }
 
     try {
       setSaving(true);
-      const res = await fetchWithAuth("/api/journals", {
-        method: "POST",
-        body: JSON.stringify({
-          text,
-          mood: result.mood,
-          advice: result.advice,
-        }),
+      await createJournal({
+        text,
+        mood: result?.mood ?? { label: "unknown" as MoodLabel, score: 1 },
+        advice: result?.advice ?? "No AI advice generated.",
       });
 
-      if (res.status === 401) {
-        setErr("Please sign in first.");
-        return;
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Save failed.");
       router.push("/journals");
     } catch (e: any) {
-      setErr(e?.message ?? "Save failed.");
+      const msg = e?.message || "Save failed.";
+      setErr(msg.includes("401") ? "Please sign in first." : msg);
     } finally {
       setSaving(false);
     }
@@ -101,33 +94,59 @@ export default function NewEntryPage() {
           onChange={(e) => setText(e.target.value)}
         />
 
-        <div className="mt-4 flex gap-3">
-          <Button onClick={analyze} disabled={loading}>
+        {/* 按鈕區：統一風格 */}
+        <div className="mt-6 flex gap-3">
+          <Button
+            onClick={analyze}
+            disabled={loading}
+            variant="primary"
+            className="flex-1"
+          >
             {loading ? "Analyzing…" : "Analyze"}
           </Button>
-          <Button onClick={save} disabled={!result || saving} className="bg-white/10 hover:bg-white/15">
+
+          <Button
+            onClick={save}
+            disabled={!text.trim() || saving}
+            variant="secondary"
+            className="flex-1"
+          >
             {saving ? "Saving…" : "Save to journal"}
           </Button>
         </div>
 
         {err && (
-          <p className="mt-4 text-sm text-red-400" role="alert" aria-live="polite">
+          <p
+            className="mt-4 text-sm text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {err}
           </p>
         )}
 
         {result && (
           <div className="mt-6 rounded-xl border border-white/10 p-4">
-            <div className="text-xs uppercase tracking-wide text-white/50">AI result</div>
+            <div className="text-xs uppercase tracking-wide text-white/50">
+              AI result
+            </div>
             <div className="mt-2">
               Mood: <b>{result.mood.label}</b> ({result.mood.score}/5)
             </div>
             <div className="mt-1">Advice: {result.advice}</div>
           </div>
         )}
+
+        {!result && text.trim() && (
+          <p className="mt-4 text-sm text-white/40 italic">
+            (No AI analysis yet — your entry will still be saved.)
+          </p>
+        )}
       </div>
     </main>
   );
 }
+
+
 
 
