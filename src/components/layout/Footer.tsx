@@ -23,7 +23,7 @@ export default function Footer() {
               Privacy
             </Link>
             <Link
-              href="/contact"
+              href="mailto:xy.huang8516@gmail.com?subject=Mood%20Journal%20AI%20Contact&body=Hi%20there%2C%0A"
               className="text-white/70 hover:text-white transition underline-offset-4 hover:underline"
             >
               Contact

@@ -26,7 +26,8 @@ export default function MoodJar({
       aria-hidden
     >
     
-      <div className="relative mx-auto h-60 w-45">
+      <div className="relative mx-auto h-80 w-56">
+
         {/* Jar silhouette (for clipping) */}
         <div
           className="

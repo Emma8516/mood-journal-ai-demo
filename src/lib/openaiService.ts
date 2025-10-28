@@ -1,5 +1,5 @@
 // src/lib/openaiService.ts
-//呼叫 OpenAI 分析心情並回傳嚴格 JSON（mood{label,score} + advice）
+
 import "server-only";
 import OpenAI from "openai";
 import type { MoodLabel, MoodResult } from "@/lib/types";

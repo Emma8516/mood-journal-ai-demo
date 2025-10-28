@@ -7,15 +7,19 @@ export default function HomePage() {
         <section className="w-full max-w-3xl text-center">
           {/* 標題區 */}
           <div className="mb-12">
-            <h1 className="text-7xl md:text-6xl font-bold tracking-tight text-white">
-              Mood Journal
-            </h1>
+    <h1
+          className="text-7xl md:text-6xl font-extrabold tracking-tight 
+                     text-transparent bg-clip-text 
+                     bg-gradient-to-b from-white via-white/100 to-white/25">
+         Mood Journal AI
+         </h1>
+
             <p className="mt-5 text-white/70 text-lg md:text-xl">
               Capture your day. Reflect with AI insight.
             </p>
           </div>
 
-          {/* 按鈕區：統一UI */}
+          {/* 按鈕*/}
           <div className="mx-auto max-w-2xl flex flex-col md:flex-row justify-center items-center gap-6 md:gap-10 px-6">
             <ButtonLink
               href="/register"
