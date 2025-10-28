@@ -128,28 +128,30 @@ export default function NewEntryPage() {
           </div>
         </div>
 
-        {/* 按鈕列 */}
-        <div className="mt-6 flex gap-3">
-          <Button
-            onClick={analyze}
-            disabled={!canAnalyze}
-            variant="primary"
-            className="flex-1"
-            aria-disabled={!canAnalyze}
-          >
-            {loading ? "Analyzing…" : "Analyze"}
-          </Button>
+       
+{/* 按鈕列：手機改成垂直、桌機並排 */}
+<div className="mt-6 flex flex-col sm:flex-row gap-3">
+  <Button
+    onClick={analyze}
+    disabled={!canAnalyze}
+    variant="primary"
+    className="w-full sm:flex-1 whitespace-nowrap"
+    aria-disabled={!canAnalyze}
+  >
+    {loading ? "Analyzing…" : "Analyze"}
+  </Button>
 
-          <Button
-            onClick={save}
-            disabled={!canSave}
-            variant="secondary"
-            className="flex-1"
-            aria-disabled={!canSave}
-          >
-            {saving ? "Saving…" : "Save to journal"}
-          </Button>
-        </div>
+  <Button
+    onClick={save}
+    disabled={!canSave}
+    variant="secondary"
+    className="w-full sm:flex-1 whitespace-nowrap"
+    aria-disabled={!canSave}
+  >
+    {saving ? "Saving…" : "Save to journal"}
+  </Button>
+</div>
+
 
         {/* 友善錯誤 */}
         {showError && (

@@ -114,7 +114,7 @@ export default function JournalsPage() {
               </p>
             </div>
 
-            {/* 行動按鈕：桌機顯示 / 手機隱藏（依需求保留 New entry） */}
+            {/* 行動按鈕：桌機顯示 / 手機隱藏 */}
             <div className="hidden md:flex">
               <ButtonLink href="/new" variant="primary" size="sm" className="whitespace-nowrap">
                 New entry
@@ -168,7 +168,7 @@ export default function JournalsPage() {
   );
 }
 
-/* ───────────────── Loading Skeleton（骨架屏） ───────────────── */
+/* ───────────────── Loading Skeleton ───────────────── */
 function LoadingSkeleton() {
   return (
     <ul className="mt-6 space-y-4">
@@ -183,7 +183,7 @@ function LoadingSkeleton() {
   );
 }
 
-/* ───────────────── 空狀態（無任一筆資料） ───────────────── */
+/* ───────────────── 空狀態 ───────────────── */
 function EmptyState({ selectedMonth }: { selectedMonth: string }) {
   return (
     <div className="mt-8 rounded-2xl border border-white/10 p-10 text-center bg-white/[.03]">
@@ -207,7 +207,7 @@ function EmptyState({ selectedMonth }: { selectedMonth: string }) {
           : "Write about your day and let AI analyze your mood."}
       </p>
 
-      {/* 行動：桌機顯示；手機隱藏（維持一致的 RWD 行為） */}
+      {/* 行動：桌機顯示；手機隱藏 */}
       {!selectedMonth && (
         <ButtonLink
           href="/new"

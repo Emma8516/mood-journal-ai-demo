@@ -32,7 +32,8 @@ export default function JournalItem({
   const colorClass = row.mood?.label ? moodColor[row.mood.label] : "bg-white/20";
 
   return (
-    <li className="relative rounded-xl border border-white/10 bg-white/[.03] hover:bg-white/[.06] transition">
+<li className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[.03] hover:bg-white/[.06] transition">
+
       {/* =========================
           列表標題列（收合狀態視圖）
           - 點擊可展開 / 收合
@@ -164,8 +165,9 @@ export default function JournalItem({
 /** 展開箭頭 */
 const Chevron = memo(function Chevron({ open }: { open: boolean }) {
   return (
-    <svg
-      className={`h-5 w-5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+<svg
+  className={`h-4 w-4 sm:h-5 sm:w-5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+
       viewBox="0 0 20 20"
       fill="currentColor"
       aria-hidden
@@ -191,7 +193,12 @@ const MoodBadge = memo(function MoodBadge({
 }) {
   return (
     <span
-      className="inline-flex items-center justify-center rounded-full bg-white/10 px-3 py-1 text-sm min-w-[15rem] whitespace-nowrap"
+      className="
+    inline-flex items-center justify-center
+    rounded-full bg-white/10 px-2.5 py-0.5
+    text-xs sm:text-sm
+    max-w-[70%] sm:max-w-none truncate
+  "
     >
       <span
         aria-hidden
