@@ -24,7 +24,6 @@ export default function MoodJar({
     <div
       className={[
         "pointer-events-none select-none z-30",
-        // sticky so it tracks scroll near top
         "md:sticky md:top-24",
         hideOnMobile ? "hidden md:block" : "",
         className,
@@ -45,8 +44,6 @@ export default function MoodJar({
             after:rounded-b after:bg-white/15
           "
           style={{
-            // Clip the inner content into a jar-ish polygon
-            // neck -> shoulders -> body -> bottom curve (approx)
             clipPath:
               "polygon(30% 5%, 70% 5%, 78% 10%, 85% 18%, 85% 82%, 80% 92%, 70% 97%, 30% 97%, 20% 92%, 15% 82%, 15% 18%, 22% 10%)",
           }}
@@ -67,34 +64,20 @@ export default function MoodJar({
             <span
               key={it.id}
               className={[
-                "absolute rounded-full opacity-90",
-                moodColor[it.label],
-                "animate-[mj-fall_600ms_ease-out_forwards]",
+                "absolute mj-dot",                // ← 用全域 CSS 動畫
+                moodColor[it.label],              // ← 你的顏色表
               ].join(" ")}
               style={{
-                height: "10px",
-                width: "10px",
                 left: `${(i * 37) % 78 + 12}%`,
                 top: `${(i % 6) * 6 + 10}%`,
                 animationDelay: `${(i % 12) * 90}ms`,
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.25)",
               }}
             />
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes mj-fall {
-          0% {
-            transform: translateY(-14px);
-          }
-          100% {
-            transform: translateY(160px);
-          }
-        }
-      `}</style>
     </div>
   );
 }
+
 

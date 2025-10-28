@@ -23,3 +23,20 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* === MoodJar 動畫（全域） === */
+@keyframes mj-fall {
+    0%   { transform: translateY(-14px); }
+    100% { transform: translateY(160px); }
+  }
+  
+  /* 工具類，和你原本 class 對齊 */
+  .mj-dot {
+    height: 10px;
+    width: 10px;
+    border-radius: 9999px;
+    opacity: 0.9;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+    animation: mj-fall 600ms ease-out forwards;
+  }
+  
