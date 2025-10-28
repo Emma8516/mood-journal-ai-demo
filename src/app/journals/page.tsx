@@ -1,186 +1,146 @@
+// src/app/journals/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
-import type { JournalDoc } from "@/lib/types";
+import { useEffect, useState, useMemo } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { ButtonLink } from "@/components/ui/Button";
-import { moodColor } from "@/lib/ui";
 import MoodJar from "@/components/viz/MoodJar";
+import { useJournals, deleteJournal } from "@/features/journals/client";
+import { type JournalDoc } from "@/lib/types";
+import JournalItem from "@/components/journals/JournalItem";
+import MonthsSidebar from "@/components/journals/MonthsSidebar";
 
 export default function JournalsPage() {
-  // ← 新增：月份清單與目前選擇的月份
-  const [months, setMonths] = useState<string[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  // ── 資料存取（自訂 hook）
+  const {
+    months,
+    selectedMonth,
+    setSelectedMonth,
+    rows,
+    loading,
+    error,
+    loadLatest,
+    refresh,
+  } = useJournals();
 
-  const [rows, setRows] = useState<JournalDoc[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string>("");
-  const [openId, setOpenId] = useState<string | null>(null); // which item is expanded
+  // ── UI 狀態
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [opErr, setOpErr] = useState<string>("");     // 操作錯誤訊息（刪除等）
+  const [userName, setUserName] = useState<string>(""); // 使用者名稱（未登入顯示 "User"）
 
-  // 第一次：載入可用月份清單
+  // ── 監聽登入狀態 → 取得顯示名稱
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetchWithAuth("/api/journals?mode=months");
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Failed to load months.");
-        if (Array.isArray(data) && data.length > 0) {
-          setMonths(data);
-          setSelectedMonth(data[0]); // 預設顯示最新月份
-        } else {
-          // 沒有月份資料時，仍然載入最近 20 筆（與你原來行為相同）
-          await loadLatest();
-        }
-      } catch (e: any) {
-        // 取月份失敗時，fallback 到最近 20 筆
-        setErr(e?.message ?? "Failed to load months.");
-        await loadLatest();
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUserName(u?.displayName || "User");
+    });
+    return () => unsub();
   }, []);
 
-  // 當月份改變時：按月載入
-  useEffect(() => {
-    if (!selectedMonth) return;
-    (async () => {
-      setLoading(true);
-      setErr("");
-      try {
-        const res = await fetchWithAuth(`/api/journals?month=${selectedMonth}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Failed to load journals.");
-        setRows(data);
-      } catch (e: any) {
-        setErr(e?.message ?? "Failed to load journals.");
-        setRows([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [selectedMonth]);
-
-  // 原本的：載入最近 20 筆
-  async function loadLatest() {
-    setLoading(true);
-    setErr("");
-    try {
-      const res = await fetchWithAuth("/api/journals?take=20");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to load journals.");
-      setRows(data);
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to load journals.");
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // ── 日期格式化（列表使用）
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
         year: "numeric",
         month: "short",
-        day: "2-digit",
+       
       }),
     []
   );
 
-  // 供 MoodJar 使用：把當月日記轉成 {id,label}[]
-  const jarItems = rows.map((r) => ({ id: r.id, label: r.mood.label }));
+  // ── MoodJar 視覺化資料（只取有標記 mood 的項目）
+  const jarItems = rows
+    .filter((r) => r.mood?.label)
+    .map((r) => ({ id: r.id, label: r.mood!.label }));
+
+  // ── 刪除單一日記
+  async function handleDelete(id: string) {
+    setOpErr("");
+    try {
+      await deleteJournal(id);
+      if (openId === id) setOpenId(null);
+      await refresh();
+    } catch (e: any) {
+      setOpErr(e?.message ?? "Delete failed.");
+    }
+  }
 
   return (
     <main className="min-h-[calc(100vh-120px)] flex items-start justify-center p-6">
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-6">
-        {/* 左側：月份清單（你要求的左側月份選單） */}
-        <aside className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-4 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">Months</h2>
-            {/* 回到最近 20 筆（非月份模式） */}
-            <button
-              onClick={() => {
-                setSelectedMonth(""); // 清空月份
-                loadLatest();
-              }}
-              className="text-xs text-white/70 hover:text-white/90"
-            >
-              Latest
-            </button>
-          </div>
-          {months.length === 0 ? (
-            <p className="text-white/60 text-sm">No month yet</p>
-          ) : (
-            <ul className="space-y-1">
-              {months.map((m) => (
-                <li key={m}>
-                  <button
-                    onClick={() => setSelectedMonth(m)}
-                    className={[
-                      "w-full text-left px-3 py-1.5 rounded-lg",
-                      "hover:bg-white/10 transition",
-                      selectedMonth === m ? "bg-white/20 font-semibold" : "",
-                    ].join(" ")}
-                  >
-                    {m}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </aside>
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6">
+        {/* ───────────────── 左側：月份篩選 ───────────────── */}
+        <MonthsSidebar
+          months={months}
+          selected={selectedMonth}
+          onSelect={(m) => setSelectedMonth(m)}
+          onLatest={() => {
+            setSelectedMonth("");
+            loadLatest();
+          }}
+        />
 
-        {/* 右側：內容區（保留你原本的視覺風格） */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 text-white">
-          <header className="flex items-center justify-between gap-4">
-            <h1 className="text-2xl font-semibold">
-              {selectedMonth ? `Your journal – ${selectedMonth}` : "Your journal"}
-            </h1>
-            <ButtonLink href="/new" className="px-5 py-2 rounded-full text-sm">
-              New entry
-            </ButtonLink>
+        {/* ───────────────── 右側：主內容卡 ───────────────── */}
+        <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 sm:p-8 text-white">
+          {/* Header（手機自動斷行；New entry 僅在 md 以上顯示） */}
+          <header className="flex items-start justify-between gap-4 flex-wrap min-w-0">
+            <div className="min-w-0">
+<h1 className="text-2xl sm:text-[26px] font-semibold leading-snug">
+  {selectedMonth ? (
+    <>
+      <span className="block sm:inline">
+        {userName ? `${userName}’s journal –` : "Your journal –"}
+      </span>{" "}
+      <span className="block sm:inline">
+        {(() => {
+          try {
+            const [year, month] = selectedMonth.split("-");
+            const formatted = formatter.format(new Date(`${year}-${month}-01`));
+            return formatted;
+          } catch {
+            return selectedMonth;
+          }
+        })()}
+      </span>
+    </>
+  ) : (
+    <>{userName ? `${userName}’s journal` : "Your journal"}</>
+  )}
+</h1>
+
+
+              {/* 次標（簡短說明） */}
+              <p className="mt-1 text-sm text-white/60">
+                Reflect on your day. Track your mood trends over time.
+              </p>
+            </div>
+
+            {/* 行動按鈕：桌機顯示 / 手機隱藏（依需求保留 New entry） */}
+            <div className="hidden md:flex">
+              <ButtonLink href="/new" variant="primary" size="sm" className="whitespace-nowrap">
+                New entry
+              </ButtonLink>
+            </div>
           </header>
 
-          {err && (
-            <p className="mt-4 text-sm text-red-400" role="alert" aria-live="polite">
-              {err}
-            </p>
+          {/* 錯誤訊息（載入錯誤 / 操作錯誤） */}
+          {(error || opErr) && (
+            <p className="mt-4 text-sm text-red-400">{error || opErr}</p>
           )}
 
-          {/* MoodJar：用你原本的 props 結構，不會報型別錯 */}
+          {/* 視覺化（MoodJar：中等尺寸以下隱藏） */}
           <div className="mt-6 flex justify-center">
             <MoodJar items={jarItems} className="max-md:hidden" />
           </div>
 
+          {/* 列表區：載入 / 空狀態 / 實際列表 */}
           {loading ? (
-            <ul className="mt-6 space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <li key={i} className="rounded-xl border border-white/10 p-4 animate-pulse">
-                  <div className="h-3 w-24 bg-white/10 rounded" />
-                  <div className="mt-3 h-4 w-3/4 bg-white/10 rounded" />
-                  <div className="mt-2 h-4 w-2/3 bg-white/10 rounded" />
-                </li>
-              ))}
-            </ul>
+            <LoadingSkeleton />
           ) : rows.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-white/10 p-8 text-center">
-              <p className="text-white/70">
-                {selectedMonth ? "No entries for this month." : "No entries yet."}
-              </p>
-              {!selectedMonth && (
-                <>
-                  <p className="mt-1 text-sm text-white/50">
-                    Start your first journal entry to see AI mood analysis here.
-                  </p>
-                  <ButtonLink href="/new" className="mt-6 px-6 py-3 rounded-full">
-                    Write your first entry
-                  </ButtonLink>
-                </>
-              )}
-            </div>
+            <EmptyState selectedMonth={selectedMonth} />
           ) : (
             <ul className="mt-6 space-y-3">
-              {rows.map((r) => {
+              {rows.map((r: JournalDoc) => {
+                const isOpen = openId === r.id;
                 const prettyDate = (() => {
                   try {
                     return formatter.format(new Date(r.dateKey));
@@ -189,98 +149,77 @@ export default function JournalsPage() {
                   }
                 })();
 
-                const isOpen = openId === r.id;
-
                 return (
-                  <li
+                  <JournalItem
                     key={r.id}
-                    className="rounded-xl border border-white/10 bg-white/[.03] hover:bg-white/[.06] transition"
-                  >
-                    {/* Header row (click to toggle) */}
-                    <button
-                      type="button"
-                      onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}
-                      aria-expanded={isOpen}
-                      className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
-                    >
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-white/50">
-                          <time>{prettyDate}</time>
-                        </div>
-                        {/* preview line when collapsed */}
-                        {!isOpen && (
-                          <p className="mt-1 text-white/80 line-clamp-2">{r.text}</p>
-                        )}
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                          <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1">
-                            <span
-                              aria-hidden
-                              title={r.mood.label}
-                              className={`mr-1.5 inline-block h-2.5 w-2.5 rounded-full ${moodColor[r.mood.label]} ring-1 ring-white/30`}
-                            />
-                            Mood:&nbsp;<b className="text-white">{r.mood.label}</b>
-                            <span className="ml-1.5 text-white/70">
-                              ({r.mood.score}/5)
-                            </span>
-                          </span>
-                          {!isOpen && r.advice && (
-                            <span className="text-white/60 line-clamp-1">
-                              Advice: {r.advice}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* chevron */}
-                      <svg
-                        className={`h-5 w-5 shrink-0 transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-
-                    {/* Expandable content */}
-                    <div
-                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
-                        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                      }`}
-                    >
-                      <div className="overflow-hidden">
-                        <div className="px-4 pb-4 pt-0 text-sm text-white/85 space-y-4">
-                          <section>
-                            <div className="text-xs uppercase tracking-wide text-white/50">
-                              Entry
-                            </div>
-                            <p className="mt-1 whitespace-pre-wrap">{r.text}</p>
-                          </section>
-
-                          {r.advice && (
-                            <section>
-                              <div className="text-xs uppercase tracking-wide text-white/50">
-                                AI advice
-                              </div>
-                              <p className="mt-1 whitespace-pre-wrap">{r.advice}</p>
-                            </section>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
+                    row={r}
+                    open={isOpen}
+                    onToggle={() => setOpenId((id) => (id === r.id ? null : r.id))}
+                    prettyDate={prettyDate}
+                    onDelete={handleDelete}
+                  />
                 );
               })}
             </ul>
           )}
-        </div>
+        </section>
       </div>
     </main>
   );
 }
+
+/* ───────────────── Loading Skeleton（骨架屏） ───────────────── */
+function LoadingSkeleton() {
+  return (
+    <ul className="mt-6 space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <li key={i} className="rounded-xl border border-white/10 p-4 animate-pulse">
+          <div className="h-3 w-24 bg-white/10 rounded" />
+          <div className="mt-3 h-4 w-3/4 bg-white/10 rounded" />
+          <div className="mt-2 h-4 w-2/3 bg-white/10 rounded" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ───────────────── 空狀態（無任一筆資料） ───────────────── */
+function EmptyState({ selectedMonth }: { selectedMonth: string }) {
+  return (
+    <div className="mt-8 rounded-2xl border border-white/10 p-10 text-center bg-white/[.03]">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+        {/* 書本圖示（inline SVG） */}
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+          <path
+            d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5A2.5 2.5 0 0117.5 21H6.5A2.5 2.5 0 014 18.5v-13zM6.5 5A.5.5 0 006 5.5v13a.5.5 0 00.5.5H18V5H6.5z"
+            fill="currentColor"
+          />
+        </svg>
+      </div>
+
+      <h3 className="mt-4 text-lg font-semibold">
+        {selectedMonth ? "No entries this month" : "Start your first entry"}
+      </h3>
+
+      <p className="mt-1 text-sm text-white/60">
+        {selectedMonth
+          ? "Try another month or write a new entry."
+          : "Write about your day and let AI analyze your mood."}
+      </p>
+
+      {/* 行動：桌機顯示；手機隱藏（維持一致的 RWD 行為） */}
+      {!selectedMonth && (
+        <ButtonLink
+          href="/new"
+          variant="primary"
+          className="mt-6 whitespace-nowrap hidden md:inline-flex"
+        >
+          Write your first entry
+        </ButtonLink>
+      )}
+    </div>
+  );
+}
+
+
+

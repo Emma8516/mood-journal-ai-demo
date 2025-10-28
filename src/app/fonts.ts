@@ -1,10 +1,6 @@
-import { Inter, Sora } from "next/font/google";
+import {  Sora } from "next/font/google";
 
-export const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+
 export const sora = Sora({
   subsets: ["latin"],
   variable: "--font-sora",
