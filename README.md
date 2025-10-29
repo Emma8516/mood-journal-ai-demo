@@ -4,6 +4,7 @@ Built with Next.js, Firebase, and OpenAI, it combines journaling, mood analytics
 
 🌐 Live Demo
 🖥️ Deployed App: https://mood-journal-app-orpin.vercel.app
+
 **Demo Account**
 - Email: demo@moodjournal.ai
 - Password: Demo1234
