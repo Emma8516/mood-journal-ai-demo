@@ -3,7 +3,7 @@ It uses AI to analyze moods and provide personalized advice, while each mood is 
 Built with Next.js, Firebase, and OpenAI, it combines journaling, mood analytics, and modern UI design into one mindful experience.
 
 🌐 Live Demo
-🖥️ Deployed App: https://mood-journal-ai.vercel.app
+🖥️ Deployed App: https://mood-journal-app-orpin.vercel.app
 
 🪶 Overview
 Mood Journal AI is a journaling web application that helps users reflect on their daily emotions through AI analysis and visualization.
