@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Mood Journal AI is a journaling web app that helps users record their thoughts and emotions.
+It uses AI to analyze moods and provide personalized advice, while each mood is visualized as a colorful orb collected in a glass jar — symbolizing emotional reflection and growth.
+Built with Next.js, Firebase, and OpenAI, it combines journaling, mood analytics, and modern UI design into one mindful experience.
 
-## Getting Started
+🌐 Live Demo
+🖥️ Deployed App: https://mood-journal-ai.vercel.app
 
-First, run the development server:
+🪶 Overview
+Mood Journal AI is a journaling web application that helps users reflect on their daily emotions through AI analysis and visualization.
+Users can write journal entries, analyze their mood with GPT-based sentiment detection, and visualize emotional trends using a “Mood Jar” concept.
+This project showcases my frontend, backend, and cloud integration skills using the Next.js 15 App Router, Firebase, and OpenAI API.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+🧩 Tech Stack
+| Category       | Technology                                    |
+| -------------- | --------------------------------------------- |
+| **Frontend**   | Next.js (React 19), TypeScript, Tailwind CSS  |
+| **Backend**    | Next.js Route Handlers (Serverless Functions) |
+| **Auth & DB**  | Firebase Authentication & Firestore           |
+| **AI**         | OpenAI GPT model for mood analysis & advice   |
+| **Deployment** | Vercel (CI/CD via GitHub)                     |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+✨ Key Features
+📝 Journaling Interface – Clean UI for writing and saving daily reflections
+🤖 AI Mood Analysis – Generates emotion labels and personalized advice
+📊 Mood Jar Visualization – Color-coded emotional timeline
+🔒 Authentication – Secure login via Firebase (Email / Google)
+☁️ Cloud-Synced Data – Firestore stores user journals in real time
+📱 Responsive Design – Mobile-friendly layout and smooth transitions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+🚧 Future Improvements
 
-## Learn More
+📱 Mobile App Version – Build a native app version using React Native or Flutter for cross-platform use.
+🧘‍♀️ Daily Reminder & Streaks – Encourage consistent journaling with gentle push notifications.
+🧠 Deeper AI Insights – Integrate GPT-based emotional trend tracking and suggestions for self-care routine
 
-To learn more about Next.js, take a look at the following resources:
+👩‍💻 Author
+Emma Huang 
+Master of Information Technology, Queensland University of Technology (QUT)
+📧 [Contact Emma Huang](mailto:xy.huang8516@gmail.com)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
