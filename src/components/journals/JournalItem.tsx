@@ -46,9 +46,9 @@ export default function JournalItem({
         className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
       >
         {/* 左：日期 */}
-        <div className="flex flex-col">
-          <div className="text-xs uppercase tracking-wide text-white/50">
-            <time>{prettyDate}</time>
+        <div className="flex flex-col min-w-0">
+          <div className="text-sm font-medium text-white">
+            <time dateTime={row.dateKey}>{prettyDate}</time>
           </div>
         </div>
 

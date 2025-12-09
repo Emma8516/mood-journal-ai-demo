@@ -38,15 +38,23 @@ export async function GET(req: NextRequest) {
     const mode = url.searchParams.get("mode");
     const month = url.searchParams.get("month");
 
-    // 讀取 take 並限制範圍，避免被亂轟
-    const takeRaw = url.searchParams.get("take");
-    const take = Math.min(Math.max(Number(takeRaw ?? 20), 1), 100); // 1~100，預設 20
+    // 讀取分頁參數
+    const pageRaw = url.searchParams.get("page");
+    const limitRaw = url.searchParams.get("limit");
+    const takeRaw = url.searchParams.get("take"); // 保留向後兼容
+    
+    // 分頁參數：page (從 1 開始), limit (每頁數量，預設 10)
+    const page = Math.max(Number(pageRaw ?? 1), 1);
+    const limit = limitRaw 
+      ? Math.min(Math.max(Number(limitRaw), 1), 100) 
+      : (takeRaw ? Math.min(Math.max(Number(takeRaw), 1), 100) : 10);
+    const offset = (page - 1) * limit;
 
     const col = adminDb.collection("users").doc(uid).collection("journals");
 
-    // 1) 取月份清單（以 dateKey 排序，比 createdAt 更穩定）
+    // 1) 取月份清單（優化：只查最近 200 筆來提取月份，通常足夠涵蓋所有月份）
     if (mode === "months") {
-      const snap = await col.orderBy("dateKey", "desc").limit(1000).get();
+      const snap = await col.orderBy("dateKey", "desc").limit(200).get();
       const months = new Set<string>();
       snap.forEach((d) => {
         const dk = d.get("dateKey");
@@ -61,21 +69,59 @@ export async function GET(req: NextRequest) {
       const range = monthRange(month);
       if (!range) return NextResponse.json({ error: "Invalid month" }, { status: 400 });
 
-      const snap = await col
+      // 獲取該月份所有日記（Firestore 不支持 offset，所以先獲取全部再分頁）
+      const allSnap = await col
         .where("dateKey", ">=", range.start)
         .where("dateKey", "<", range.end)
         .orderBy("dateKey", "desc")
-        .limit(Math.min(take, 500)) // 每月最多 500 筆，受 take 影響
         .get();
+      
+      const allRows = allSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const total = allRows.length;
+      const totalPages = Math.ceil(total / limit);
 
-      const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-      return NextResponse.json(rows);
+      // 在內存中分頁
+      const rows = allRows.slice(offset, offset + limit);
+      
+      return NextResponse.json({ 
+        rows, 
+        pagination: { 
+          page, 
+          limit, 
+          total, 
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        } 
+      });
     }
 
-    // 3) 沒帶 month → 回最近 N 筆
-    const snap = await col.orderBy("createdAt", "desc").limit(take).get();
-    const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-    return NextResponse.json(rows);
+    // 3) 沒帶 month → 回最近 N 筆（支持分頁）
+    // 為了分頁，我們需要獲取更多數據（最多 500 筆），然後在內存中分頁
+    const maxFetch = 500;
+    const allSnap = await col
+      .orderBy("createdAt", "desc")
+      .limit(maxFetch)
+      .get();
+    
+    const allRows = allSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+    const total = allRows.length;
+    const totalPages = Math.ceil(total / limit);
+
+    // 在內存中分頁
+    const rows = allRows.slice(offset, offset + limit);
+    
+    return NextResponse.json({ 
+      rows, 
+      pagination: { 
+        page, 
+        limit, 
+        total, 
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      } 
+    });
   } catch (e: any) {
     if (e instanceof Response) return e; // 直接回傳 requireUid 的錯誤
     console.error("[GET /journals] error:", e);

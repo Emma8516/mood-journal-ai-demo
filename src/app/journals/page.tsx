@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink, Button } from "@/components/ui/Button";
 import MoodJar from "@/components/viz/MoodJar";
 import { useJournals, deleteJournal } from "@/features/journals/client";
 import { type JournalDoc } from "@/lib/types";
@@ -22,12 +22,16 @@ export default function JournalsPage() {
     error,
     loadLatest,
     refresh,
+    pagination,
+    currentPage,
+    loadPage,
   } = useJournals();
 
   // ── UI 狀態
   const [openId, setOpenId] = useState<string | null>(null);
   const [opErr, setOpErr] = useState<string>("");     // 操作錯誤訊息（刪除等）
   const [userName, setUserName] = useState<string>(""); // 使用者名稱（未登入顯示 "User"）
+  const [showFilters, setShowFilters] = useState<boolean>(false); // 手機版展開/收起月份篩選
 
   // ── 監聽登入狀態 → 取得顯示名稱
   useEffect(() => {
@@ -43,7 +47,7 @@ export default function JournalsPage() {
       new Intl.DateTimeFormat(undefined, {
         year: "numeric",
         month: "short",
-       
+        day: "numeric",
       }),
     []
   );
@@ -69,15 +73,63 @@ export default function JournalsPage() {
     <main className="min-h-[calc(100vh-120px)] flex items-start justify-center p-6">
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6">
         {/* ───────────────── 左側：月份篩選 ───────────────── */}
-        <MonthsSidebar
-          months={months}
-          selected={selectedMonth}
-          onSelect={(m) => setSelectedMonth(m)}
-          onLatest={() => {
-            setSelectedMonth("");
-            loadLatest();
-          }}
-        />
+        {/* 行動版：漢堡按鈕 + 可展開的篩選面板 */}
+        <div className="md:hidden">
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            aria-expanded={showFilters}
+            aria-controls="months-filter-panel"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+            Filters
+          </button>
+
+          {showFilters && (
+            <div id="months-filter-panel" className="mb-4">
+              <MonthsSidebar
+                months={months}
+                selected={selectedMonth}
+                onSelect={(m) => {
+                  setSelectedMonth(m);
+                  setShowFilters(false);
+                }}
+                onLatest={() => {
+                  setSelectedMonth("");
+                  loadLatest(1);
+                  setShowFilters(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 桌機版：固定側欄 */}
+        <div className="hidden md:block">
+          <MonthsSidebar
+            months={months}
+            selected={selectedMonth}
+            onSelect={(m) => setSelectedMonth(m)}
+            onLatest={() => {
+              setSelectedMonth("");
+              loadLatest(1);
+            }}
+          />
+        </div>
 
         {/* ───────────────── 右側：主內容卡 ───────────────── */}
         <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 sm:p-8 text-white">
@@ -138,29 +190,41 @@ export default function JournalsPage() {
           ) : rows.length === 0 ? (
             <EmptyState selectedMonth={selectedMonth} />
           ) : (
-            <ul className="mt-6 space-y-3">
-              {rows.map((r: JournalDoc) => {
-                const isOpen = openId === r.id;
-                const prettyDate = (() => {
-                  try {
-                    return formatter.format(new Date(r.dateKey));
-                  } catch {
-                    return r.dateKey;
-                  }
-                })();
+            <>
+              <ul className="mt-6 space-y-3">
+                {rows.map((r: JournalDoc) => {
+                  const isOpen = openId === r.id;
+                  const prettyDate = (() => {
+                    try {
+                    // Use noon UTC to avoid timezone shifting the displayed date
+                    return formatter.format(new Date(`${r.dateKey}T12:00:00Z`));
+                    } catch {
+                      return r.dateKey;
+                    }
+                  })();
 
-                return (
-                  <JournalItem
-                    key={r.id}
-                    row={r}
-                    open={isOpen}
-                    onToggle={() => setOpenId((id) => (id === r.id ? null : r.id))}
-                    prettyDate={prettyDate}
-                    onDelete={handleDelete}
-                  />
-                );
-              })}
-            </ul>
+                  return (
+                    <JournalItem
+                      key={r.id}
+                      row={r}
+                      open={isOpen}
+                      onToggle={() => setOpenId((id) => (id === r.id ? null : r.id))}
+                      prettyDate={prettyDate}
+                      onDelete={handleDelete}
+                    />
+                  );
+                })}
+              </ul>
+
+              {/* 分頁控件 */}
+              {pagination && pagination.totalPages > 1 && (
+                <PaginationControls
+                  pagination={pagination}
+                  currentPage={currentPage}
+                  onPageChange={loadPage}
+                />
+              )}
+            </>
           )}
         </section>
       </div>
@@ -217,6 +281,78 @@ function EmptyState({ selectedMonth }: { selectedMonth: string }) {
           Write your first entry
         </ButtonLink>
       )}
+    </div>
+  );
+}
+
+/* ───────────────── 分頁控件 ───────────────── */
+function PaginationControls({
+  pagination,
+  currentPage,
+  onPageChange,
+}: {
+  pagination: { page: number; totalPages: number; hasNext: boolean; hasPrev: boolean; total: number };
+  currentPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-6">
+      {/* Page info */}
+      <div className="text-sm text-white/60">
+        Page {currentPage} of {pagination.totalPages}
+        <span className="ml-2">({pagination.total} entries)</span>
+      </div>
+
+      {/* Pager buttons */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={!pagination.hasPrev}
+          className="disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg
+            className="h-4 w-4 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Previous
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={!pagination.hasNext}
+          className="disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+          <svg
+            className="h-4 w-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </Button>
+      </div>
     </div>
   );
 }
